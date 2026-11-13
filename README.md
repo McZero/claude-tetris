@@ -184,3 +184,7 @@ Algunos parámetros fáciles de tunear en `game.js`:
 ## Licencia
 
 Proyecto de uso libre con fines educativos y de práctica.
+
+## Tema claro / oscuro
+
+Interruptor junto al título (accesible por teclado: Tab + Enter/Espacio). El tema oscuro es el predeterminado y la preferencia se guarda en `localStorage`.

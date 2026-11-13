@@ -4,16 +4,10 @@ const COLS = 10;
 const ROWS = 20;
 const BLOCK = 30;
 
-const COLORS = [
-  null,
-  '#4dd0e1', // I - cyan
-  '#ffd54f', // O - yellow
-  '#ba68c8', // T - purple
-  '#81c784', // S - green
-  '#e57373', // Z - red
-  '#7986cb', // J - indigo
-  '#ffb74d', // L - orange
-];
+// Índice 0 = null; los colores se leen de las variables CSS --piece-N (según el tema).
+const COLORS = [null, '', '', '', '', '', '', ''];
+let gridColor = '#22222e';
+let highlightColor = 'rgba(255,255,255,0.12)';
 
 const PIECES = [
   null,
@@ -39,6 +33,7 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const themeToggle = document.getElementById('theme-toggle');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
@@ -163,13 +158,13 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
   context.fillStyle = color;
   context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
   // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
+  context.fillStyle = highlightColor;
   context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
   context.globalAlpha = 1;
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = gridColor;
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -275,6 +270,7 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  if (e.target === themeToggle) return; // con el switch enfocado, no hay teclas de juego
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -301,4 +297,25 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 
+function applyTheme(theme, persist) {
+  document.documentElement.dataset.theme = theme;
+  themeToggle.setAttribute('aria-checked', String(theme === 'light'));
+  const css = getComputedStyle(document.documentElement);
+  for (let i = 1; i < COLORS.length; i++) COLORS[i] = css.getPropertyValue(`--piece-${i}`).trim();
+  gridColor = css.getPropertyValue('--grid').trim();
+  highlightColor = css.getPropertyValue('--highlight').trim();
+  if (persist) {
+    try { localStorage.setItem('theme', theme); } catch (e) { /* almacenamiento no disponible */ }
+  }
+  // En pausa/game over el loop no redibuja: refrescar manualmente
+  if (current && next) { draw(); drawNext(); }
+}
+
+themeToggle.addEventListener('click', () => {
+  const isLight = document.documentElement.dataset.theme === 'light';
+  applyTheme(isLight ? 'dark' : 'light', true);
+  themeToggle.blur(); // devuelve el control al juego
+});
+
+applyTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', false);
 init();
