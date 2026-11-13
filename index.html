@@ -4,13 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tetris</title>
+  <script>
+    // Aplica el tema guardado antes del primer renderizado (evita parpadeo). Por defecto: oscuro.
+    (function () {
+      var t = 'dark';
+      try { if (localStorage.getItem('theme') === 'light') t = 'light'; } catch (e) {}
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="wrapper">
+    <div class="header">
     <h1 class="title" aria-label="Tetris">
-      <span style="--c:#4dd0e1">T</span><span style="--c:#ffd54f">E</span><span style="--c:#ba68c8">T</span><span style="--c:#81c784">R</span><span style="--c:#e57373">I</span><span style="--c:#ffb74d">S</span>
+      <span style="--c:var(--piece-1)">T</span><span style="--c:var(--piece-2)">E</span><span style="--c:var(--piece-3)">T</span><span style="--c:var(--piece-4)">R</span><span style="--c:var(--piece-5)">I</span><span style="--c:var(--piece-7)">S</span>
     </h1>
+    <button id="theme-toggle" class="theme-toggle" type="button" role="switch" aria-checked="false">
+      <span class="theme-toggle-label">Tema claro</span>
+      <span class="theme-toggle-track" aria-hidden="true"><span class="theme-toggle-thumb"></span></span>
+    </button>
+    </div>
 
     <div class="game">
     <div class="game-container">
