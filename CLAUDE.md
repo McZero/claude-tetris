@@ -17,6 +17,7 @@ Three files: `index.html` (DOM + two canvases), `style.css`, and `game.js` (all 
 - `game.js` holds game state in module-level `let` variables (`board`, `current`, `next`, `score`, ...), reset by `init()`, which the restart button also calls.
 - Board is a `ROWS×COLS` matrix of 0 or a color index (1–7); the same index selects the piece in `PIECES` and its color in `COLORS`. Keep those arrays aligned (index 0 is `null`).
 - Piece lifecycle: `spawn()` promotes `next` to `current` and triggers `endGame()` if it collides immediately; `lockPiece()` = `merge()` → `clearLines()` → `spawn()`.
+- Pause menu: `P`/`Escape` call `openPauseMenu()`/`resumeGame()` (`#pause-menu` overlay: resume, restart, controls panel, start-level `<select>`). While `paused`, keydown ignores game keys. `startLevel` (localStorage `startLevel`, 1-10) seeds `level` in `init()`; level = `max(startLevel, lines/10+1)`. Game over still uses `#overlay`.
 - The loop (`loop`, via `requestAnimationFrame`) only handles gravity timing and `draw()`; input is handled in the `keydown` listener. Pause cancels the animation frame and restarts `loop` on resume. `endGame()` also cancels it.
 - Rotation is `rotateCW` plus horizontal-only kicks (`[0,-1,1,-2,2]`) in `tryRotate`.
 - Canvas size is hardcoded in `index.html` (`board` 300×600 = `COLS×BLOCK` × `ROWS×BLOCK`; `next-canvas` 120×120). Changing `COLS`, `ROWS` or `BLOCK` requires updating those attributes.
