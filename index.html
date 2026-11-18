@@ -45,6 +45,11 @@
         </div>
 
         <div class="panel-section">
+          <span class="label">COMBO</span>
+          <span class="value" id="combo">0</span>
+        </div>
+
+        <div class="panel-section">
           <span class="label">NEXT</span>
           <canvas id="next-canvas" width="120" height="120"></canvas>
         </div>
@@ -62,11 +67,26 @@
       </aside>
     </div>
 
-    <div id="overlay" class="overlay hidden">
+    <div id="overlay" class="overlay">
       <div class="overlay-box">
-        <p id="overlay-title">GAME OVER</p>
+        <p id="overlay-title">TETRIS</p>
         <p id="overlay-score"></p>
-        <button id="restart-btn">Reiniciar</button>
+        <form id="name-form" class="name-form hidden">
+          <label for="name-input">Nuevo récord. Tu nombre:</label>
+          <input id="name-input" type="text" maxlength="12" autocomplete="off" required />
+          <button id="save-btn" type="submit">Guardar</button>
+        </form>
+        <div id="scores-section" class="scores hidden">
+          <span class="label">MEJORES PUNTUACIONES</span>
+          <table id="scores-table">
+            <thead><tr><th>#</th><th>Nombre</th><th>Puntos</th><th>Líneas</th><th>Combo</th></tr></thead>
+            <tbody id="scores-body"></tbody>
+          </table>
+          <p id="scores-stats" class="stats"></p>
+        </div>
+        <button id="play-btn">Jugar</button>
+        <button id="restart-btn" class="hidden">Reiniciar</button>
+        <button id="clear-btn" class="link-btn hidden" type="button">Borrar records</button>
       </div>
     </div>
     </div>
