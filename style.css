@@ -56,6 +56,76 @@
   --piece-7: #d04a00;
 }
 
+/* ---- Skins (after themes so they override both) ---- */
+:root[data-skin="neon"] {
+  --board-bg: #000000;
+  --grid: #1a1a2e;
+  --highlight: rgba(255, 255, 255, 0.2);
+  --piece-1: #00f0ff;
+  --piece-2: #ffee00;
+  --piece-3: #d500f9;
+  --piece-4: #39ff14;
+  --piece-5: #ff1744;
+  --piece-6: #5c7cff;
+  --piece-7: #ff9100;
+}
+
+:root[data-skin="pastel"] {
+  --board-bg: #2a2434;
+  --grid: #342d40;
+  --highlight: rgba(255, 255, 255, 0.35);
+  --piece-1: #a8e6ef;
+  --piece-2: #fff1a8;
+  --piece-3: #dcb8f0;
+  --piece-4: #b8e8c0;
+  --piece-5: #f7b5b5;
+  --piece-6: #b8c0f0;
+  --piece-7: #fbd2a0;
+}
+
+:root[data-skin="pastel"][data-theme="light"] {
+  --board-bg: #fffafc;
+  --grid: #f0e6ee;
+  --highlight: rgba(255, 255, 255, 0.45);
+  /* >= 3:1 contra --board-bg */
+  --piece-1: #1f8fa0;
+  --piece-2: #a07a00;
+  --piece-3: #9b5fc0;
+  --piece-4: #3f8f5f;
+  --piece-5: #d0505c;
+  --piece-6: #5a70d0;
+  --piece-7: #c86a1e;
+}
+
+:root[data-skin="pixel"] {
+  --grid: #2a2a38;
+}
+
+:root[data-skin="pixel"][data-theme="light"] {
+  --grid: #c4c4d4;
+}
+
+.skin-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.skin-picker select {
+  background: var(--kbd-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font: inherit;
+}
+
+.skin-picker select:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
