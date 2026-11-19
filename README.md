@@ -86,6 +86,10 @@ Después abre `http://localhost:8000` en el navegador.
 | `Espacio` | Hard drop (caída instantánea)     |
 | `P`       | Pausar / reanudar                 |
 
+### Móvil
+
+En pantallas táctiles (o anchos ≤ 600px) aparecen botones bajo el tablero: pausa, rotar, caída, `←`, `↓` y `→`. Mantener pulsado `←`, `→` o `↓` repite la acción. El tablero se escala a la pantalla.
+
 ---
 
 ## Cómo funciona
