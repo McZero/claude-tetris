@@ -458,6 +458,7 @@ function showStart() {
 
 function endGame() {
   gameOver = true;
+  stopRepeat();
   cancelAnimationFrame(animId);
   const rec = loadRecords();
   rec.bestCombo = Math.max(rec.bestCombo, bestCombo);
@@ -510,6 +511,7 @@ function togglePause() {
     lastTime = performance.now();
     animId = requestAnimationFrame(loop);
   } else {
+    stopRepeat();
     cancelAnimationFrame(animId);
     startLevelSelect.value = String(startLevel);
     pauseControls.hidden = true;
@@ -565,35 +567,85 @@ function init() {
   animId = requestAnimationFrame(loop);
 }
 
-document.addEventListener('keydown', e => {
-  if (e.target === themeToggle || e.target === skinSelect) return; // con el switch enfocado, no hay teclas de juego
-  if (e.code === 'KeyP' || e.code === 'Escape') {
-    if (!e.repeat) togglePause();
+// Single entry point for keyboard and touch input.
+function handleAction(action) {
+  if (action === 'pause') {
+    togglePause();
     return;
   }
-  // Con el menú abierto (o game over) las teclas de juego no hacen nada
+  // Con el menú abierto (o game over) las acciones de juego no hacen nada
   if (paused || gameOver || clearing) return;
-  switch (e.code) {
-    case 'ArrowLeft':
+  switch (action) {
+    case 'left':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
       break;
-    case 'ArrowRight':
+    case 'right':
       if (!collide(current.shape, current.x + 1, current.y)) current.x++;
       break;
-    case 'ArrowDown':
+    case 'down':
       softDrop();
       break;
-    case 'ArrowUp':
-    case 'KeyX':
+    case 'rotate':
       tryRotate();
       break;
-    case 'Space':
-      e.preventDefault();
+    case 'drop':
       hardDrop();
       break;
   }
   updateHUD();
+}
+
+const KEY_ACTIONS = {
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  ArrowDown: 'down',
+  ArrowUp: 'rotate',
+  KeyX: 'rotate',
+  Space: 'drop',
+};
+
+document.addEventListener('keydown', e => {
+  if (e.target === themeToggle || e.target === skinSelect) return; // con el switch enfocado, no hay teclas de juego
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (!e.repeat) handleAction('pause');
+    return;
+  }
+  const action = KEY_ACTIONS[e.code];
+  if (!action) return;
+  if (action === 'drop') e.preventDefault();
+  handleAction(action);
 });
+
+// ---- Touch controls ----
+const touchControls = document.getElementById('touch-controls');
+const REPEAT_ACTIONS = new Set(['left', 'right', 'down']);
+const REPEAT_DELAY_MS = 170;
+const REPEAT_INTERVAL_MS = 50;
+let repeatDelayId = null;
+let repeatIntervalId = null;
+
+function stopRepeat() {
+  clearTimeout(repeatDelayId);
+  clearInterval(repeatIntervalId);
+  repeatDelayId = repeatIntervalId = null;
+}
+
+touchControls.addEventListener('pointerdown', e => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  e.preventDefault();
+  const action = btn.dataset.action;
+  stopRepeat();
+  handleAction(action);
+  if (REPEAT_ACTIONS.has(action)) {
+    repeatDelayId = setTimeout(() => {
+      repeatIntervalId = setInterval(() => handleAction(action), REPEAT_INTERVAL_MS);
+    }, REPEAT_DELAY_MS);
+  }
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(type =>
+  touchControls.addEventListener(type, stopRepeat));
+touchControls.addEventListener('contextmenu', e => e.preventDefault());
 
 restartBtn.addEventListener('click', init);
 resumeBtn.addEventListener('click', togglePause);
