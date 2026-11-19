@@ -365,6 +365,9 @@ kbd {
 
 .menu-btn:focus-visible,
 .level-select select:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
 
 /* ---- Tabla de records ---- */
 .hidden {
