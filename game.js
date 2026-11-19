@@ -57,6 +57,7 @@ const MAX_RECORDS = 5;
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let combo, bestCombo, pendingScore = null;
+let clearing = null; // animación de líneas en curso: { rows, elapsed, duration, particles }
 
 function intervalForLevel(lvl) {
   return Math.max(100, 1000 - (lvl - 1) * 90);
@@ -113,15 +114,18 @@ function merge() {
         board[current.y + r][current.x + c] = current.shape[r][c];
 }
 
-function clearLines() {
-  let cleared = 0;
-  for (let r = ROWS - 1; r >= 0; r--) {
-    if (board[r].every(v => v !== 0)) {
-      board.splice(r, 1);
-      board.unshift(new Array(COLS).fill(0));
-      cleared++;
-      r++;
-    }
+function findFullRows() {
+  const rows = [];
+  for (let r = 0; r < ROWS; r++) if (board[r].every(v => v !== 0)) rows.push(r);
+  return rows;
+}
+
+// Quita las filas dadas del tablero y aplica combo, puntos y nivel.
+function applyClear(rows) {
+  const cleared = rows.length;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    board.splice(rows[i], 1);
+    board.unshift(new Array(COLS).fill(0));
   }
   // Combo = bloqueos consecutivos que limpian línea
   combo = cleared ? combo + 1 : 0;
@@ -160,8 +164,83 @@ function softDrop() {
 
 function lockPiece() {
   merge();
-  clearLines();
+  const rows = findFullRows();
+  if (rows.length) {
+    startClearAnim(rows); // spawn() se difiere hasta que acabe la animación
+  } else {
+    applyClear(rows);
+    spawn();
+  }
+}
+
+// ---- Animación de pulverización de líneas ----
+const CLEAR_ANIM_MS = 1000; // duración en nivel 1; escala con la velocidad de caída
+const FRAG_GRID = 2;        // fragmentos por lado de celda
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+function startClearAnim(rows) {
+  const duration = CLEAR_ANIM_MS * dropInterval / intervalForLevel(1);
+  const speed = CLEAR_ANIM_MS / duration; // las velocidades se miden en "segundos de animación"
+  const size = BLOCK / FRAG_GRID;
+  const half = (COLS * BLOCK) / 2;
+  const particles = [];
+  for (const r of rows) {
+    for (let c = 0; c < COLS; c++) {
+      for (let i = 0; i < FRAG_GRID; i++) {
+        for (let j = 0; j < FRAG_GRID; j++) {
+          const x = c * BLOCK + i * size;
+          const y = r * BLOCK + j * size;
+          const dx = (x + size / 2 - half) / half; // -1..1 desde el centro
+          particles.push({
+            idx: board[r][c], x, y, size,
+            vx: dx * 140 + (Math.random() - 0.5) * 120,
+            vy: -(60 + Math.random() * 220),
+            rot: 0,
+            vrot: (Math.random() - 0.5) * 10,
+            delay: Math.abs(dx) * 0.2 + Math.random() * 0.1, // onda desde el centro
+          });
+        }
+      }
+    }
+  }
+  clearing = { rows, elapsed: 0, duration, particles };
+}
+
+function finishClear() {
+  applyClear(clearing.rows);
+  clearing = null;
+  dropAccum = 0;
   spawn();
+}
+
+function drawClearAnim() {
+  const tn = Math.min(1, clearing.elapsed / clearing.duration);
+  // destello inicial
+  if (tn < 0.15) {
+    ctx.save();
+    ctx.globalAlpha = 1 - tn / 0.15;
+    ctx.fillStyle = highlightColor;
+    for (const r of clearing.rows)
+      for (let k = 0; k < 3; k++) ctx.fillRect(0, r * BLOCK, COLS * BLOCK, BLOCK);
+    ctx.restore();
+  }
+  if (reducedMotion.matches) return;
+  const G = 900;
+  for (const p of clearing.particles) {
+    const t = Math.max(0, tn - p.delay);
+    const life = t / (1 - p.delay);
+    const alpha = Math.pow(1 - life, 1.5);
+    if (alpha <= 0) continue;
+    const cx = p.x + p.size / 2 + p.vx * t;
+    const cy = p.y + p.size / 2 + p.vy * t + 0.5 * G * t * t;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(cx, cy);
+    ctx.rotate(p.rot + p.vrot * t);
+    ctx.scale(1 - life * 0.5, 1 - life * 0.5);
+    SKINS[currentSkin](ctx, -p.size / 2, -p.size / 2, p.size, COLORS[p.idx]);
+    ctx.restore();
+  }
 }
 
 function spawn() {
@@ -262,10 +341,17 @@ function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawGrid();
 
-  // board
-  for (let r = 0; r < ROWS; r++)
+  // board (las filas en animación las dibujan las partículas)
+  for (let r = 0; r < ROWS; r++) {
+    if (clearing && clearing.rows.includes(r)) continue;
     for (let c = 0; c < COLS; c++)
       drawBlock(ctx, c, r, board[r][c], BLOCK);
+  }
+
+  if (clearing) {
+    drawClearAnim();
+    return; // la pieza ya está fusionada: sin ghost ni pieza actual
+  }
 
   // ghost
   const gy = ghostY();
@@ -434,13 +520,18 @@ function togglePause() {
 function loop(ts) {
   const dt = ts - lastTime;
   lastTime = ts;
-  dropAccum += dt;
-  if (dropAccum >= dropInterval) {
-    dropAccum = 0;
-    if (!collide(current.shape, current.x, current.y + 1)) {
-      current.y++;
-    } else {
-      lockPiece();
+  if (clearing) {
+    clearing.elapsed += dt;
+    if (clearing.elapsed >= clearing.duration) finishClear();
+  } else {
+    dropAccum += dt;
+    if (dropAccum >= dropInterval) {
+      dropAccum = 0;
+      if (!collide(current.shape, current.x, current.y + 1)) {
+        current.y++;
+      } else {
+        lockPiece();
+      }
     }
   }
   draw();
@@ -456,6 +547,7 @@ function init() {
   combo = 0;
   bestCombo = 0;
   pendingScore = null;
+  clearing = null;
   paused = false;
   gameOver = false;
   dropInterval = intervalForLevel(level);
@@ -478,7 +570,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   // Con el menú abierto (o game over) las teclas de juego no hacen nada
-  if (paused || gameOver) return;
+  if (paused || gameOver || clearing) return;
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
