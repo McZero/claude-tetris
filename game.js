@@ -45,8 +45,18 @@ const startLevelSelect = document.getElementById('start-level');
 
 const MAX_START_LEVEL = 15;
 let startLevel = 1; // nivel con el que empieza la próxima partida
+const nameForm = document.getElementById('name-form');
+const nameInput = document.getElementById('name-input');
+const recordsEl = document.getElementById('records');
+const recordsList = document.getElementById('records-list');
+const recordsStats = document.getElementById('records-stats');
+const resetRecordsBtn = document.getElementById('reset-records-btn');
+
+const RECORDS_KEY = 'tetris-records';
+const MAX_RECORDS = 5;
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let combo, bestCombo, pendingScore = null;
 
 function intervalForLevel(lvl) {
   return Math.max(100, 1000 - (lvl - 1) * 90);
@@ -113,6 +123,9 @@ function clearLines() {
       r++;
     }
   }
+  // Combo = bloqueos consecutivos que limpian línea
+  combo = cleared ? combo + 1 : 0;
+  bestCombo = Math.max(bestCombo, combo);
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
@@ -278,13 +291,127 @@ function drawNext() {
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
 }
 
+// ---- Tabla de records (localStorage) ----
+function loadRecords() {
+  const rec = { scores: [], bestCombo: 0, maxLines: 0 };
+  try {
+    const data = JSON.parse(localStorage.getItem(RECORDS_KEY));
+    if (data && Array.isArray(data.scores)) {
+      rec.scores = data.scores
+        .filter(s => s && typeof s.name === 'string' && Number.isFinite(s.score))
+        .slice(0, MAX_RECORDS);
+    }
+    if (data && Number.isFinite(data.bestCombo)) rec.bestCombo = data.bestCombo;
+    if (data && Number.isFinite(data.maxLines)) rec.maxLines = data.maxLines;
+  } catch (e) { /* almacenamiento no disponible o datos corruptos */ }
+  return rec;
+}
+
+function saveRecords(rec) {
+  try { localStorage.setItem(RECORDS_KEY, JSON.stringify(rec)); } catch (e) { /* sin almacenamiento */ }
+}
+
+function qualifies(rec, s) {
+  return s > 0 && (rec.scores.length < MAX_RECORDS || s > rec.scores[rec.scores.length - 1].score);
+}
+
+// Inserta tras las puntuaciones iguales o mayores (el empate más antiguo queda por delante).
+function insertScore(scores, entry) {
+  let i = scores.findIndex(s => s.score < entry.score);
+  if (i === -1) i = scores.length;
+  const out = scores.slice();
+  out.splice(i, 0, entry);
+  return { list: out.slice(0, MAX_RECORDS), index: i };
+}
+
+function renderRecords(rec, list, highlight) {
+  recordsList.textContent = '';
+  for (let i = 0; i < MAX_RECORDS; i++) {
+    const li = document.createElement('li');
+    const e = list[i];
+    const rank = document.createElement('span');
+    rank.className = 'rank';
+    rank.textContent = `${i + 1}.`;
+    const name = document.createElement('span');
+    name.className = 'name';
+    const pts = document.createElement('span');
+    pts.className = 'pts';
+    if (e) {
+      name.textContent = e.name;
+      pts.textContent = e.score.toLocaleString();
+    } else {
+      li.classList.add('empty');
+      name.textContent = '---';
+    }
+    if (i === highlight) li.classList.add('highlight');
+    li.append(rank, name, pts);
+    recordsList.append(li);
+  }
+  recordsStats.textContent = `Mejor combo: ×${rec.bestCombo} · Líneas máx: ${rec.maxLines}`;
+}
+
+function showOverlay(title, scoreText, withRecords) {
+  overlayTitle.textContent = title;
+  overlayScore.textContent = scoreText;
+  recordsEl.classList.toggle('hidden', !withRecords);
+  nameForm.classList.add('hidden');
+  overlay.classList.remove('hidden');
+}
+
+function showStart() {
+  cancelAnimationFrame(animId);
+  gameOver = true; // bloquea las teclas de juego hasta pulsar "Jugar"
+  draw();
+  showOverlay('TETRIS', '', true);
+  const rec = loadRecords();
+  renderRecords(rec, rec.scores, -1);
+  restartBtn.textContent = 'Jugar';
+}
+
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
-  overlayTitle.textContent = 'GAME OVER';
-  overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
-  overlay.classList.remove('hidden');
+  const rec = loadRecords();
+  rec.bestCombo = Math.max(rec.bestCombo, bestCombo);
+  rec.maxLines = Math.max(rec.maxLines, lines);
+  saveRecords(rec);
+  showOverlay('GAME OVER', `Puntuación: ${score.toLocaleString()}`, true);
+  restartBtn.textContent = 'Reiniciar';
+  if (qualifies(rec, score)) {
+    pendingScore = score;
+    const { list, index } = insertScore(rec.scores, { name: '???', score, lines });
+    renderRecords(rec, list, index);
+    nameForm.classList.remove('hidden');
+    nameInput.value = '';
+    nameInput.focus();
+  } else {
+    pendingScore = null;
+    renderRecords(rec, rec.scores, -1);
+  }
 }
+
+nameForm.addEventListener('submit', e => {
+  e.preventDefault();
+  if (pendingScore === null) return;
+  const name = nameInput.value.trim().slice(0, 12) || 'ANON';
+  const rec = loadRecords();
+  const { list, index } = insertScore(rec.scores, { name, score: pendingScore, lines });
+  rec.scores = list;
+  saveRecords(rec);
+  pendingScore = null;
+  nameForm.classList.add('hidden');
+  renderRecords(rec, rec.scores, index);
+  restartBtn.focus();
+});
+
+resetRecordsBtn.addEventListener('click', () => {
+  if (!confirm('¿Borrar todos los records?')) return;
+  const rec = { scores: [], bestCombo: 0, maxLines: 0 };
+  saveRecords(rec);
+  pendingScore = null; // ya no hay top al que entrar
+  nameForm.classList.add('hidden');
+  renderRecords(rec, rec.scores, -1);
+});
 
 function togglePause() {
   if (gameOver) return;
@@ -326,6 +453,9 @@ function init() {
   score = 0;
   lines = 0;
   level = startLevel;
+  combo = 0;
+  bestCombo = 0;
+  pendingScore = null;
   paused = false;
   gameOver = false;
   dropInterval = intervalForLevel(level);
@@ -427,3 +557,4 @@ themeToggle.addEventListener('click', () => {
 applySkin(document.documentElement.dataset.skin, false);
 applyTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', false);
 init();
+showStart();
