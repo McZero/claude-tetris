@@ -10,6 +10,9 @@
       var t = 'dark';
       try { if (localStorage.getItem('theme') === 'light') t = 'light'; } catch (e) {}
       document.documentElement.dataset.theme = t;
+      var s = 'retro';
+      try { var ss = localStorage.getItem('skin'); if (ss === 'neon' || ss === 'pastel' || ss === 'pixel') s = ss; } catch (e) {}
+      document.documentElement.dataset.skin = s;
     })();
   </script>
   <link rel="stylesheet" href="style.css" />
@@ -24,6 +27,15 @@
       <span class="theme-toggle-label">Tema claro</span>
       <span class="theme-toggle-track" aria-hidden="true"><span class="theme-toggle-thumb"></span></span>
     </button>
+    <label class="skin-picker">
+      <span class="skin-label">Skin</span>
+      <select id="skin-select">
+        <option value="retro">Retro</option>
+        <option value="neon">Neon</option>
+        <option value="pastel">Pastel</option>
+        <option value="pixel">Pixel art</option>
+      </select>
+    </label>
     </div>
 
     <div class="game">
