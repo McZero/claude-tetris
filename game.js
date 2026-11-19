@@ -123,8 +123,10 @@ function findFullRows() {
 // Quita las filas dadas del tablero y aplica combo, puntos y nivel.
 function applyClear(rows) {
   const cleared = rows.length;
-  for (let i = rows.length - 1; i >= 0; i--) {
-    board.splice(rows[i], 1);
+  // `rows` va en orden ascendente: cada unshift desplaza solo las filas superiores,
+  // así los índices de las filas pendientes siguen siendo válidos.
+  for (const r of rows) {
+    board.splice(r, 1);
     board.unshift(new Array(COLS).fill(0));
   }
   // Combo = bloqueos consecutivos que limpian línea
