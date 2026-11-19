@@ -99,6 +99,14 @@
   --bg: #fdf6fb;
   --board-bg: #fffafd;
   --grid: #f0e4ee;
+  /* >= 3:1 contra --board-bg */
+  --piece-1: #289db4;
+  --piece-2: #b28c06;
+  --piece-3: #bb75cf;
+  --piece-4: #3ba54a;
+  --piece-5: #eb6664;
+  --piece-6: #7c8cd9;
+  --piece-7: #e1730d;
 }
 
 :root[data-skin="pastel"][data-theme="dark"] {
